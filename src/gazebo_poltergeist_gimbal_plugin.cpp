@@ -102,7 +102,6 @@ public:
         {
             double curr_position = ConvertAngle180(camera_mount_link_->GetRelativePose().rot.GetAsEuler().x/kDEG_2_RAD);
 
-
             double angle_diff =  curr_position - goal_point_.X();
 
             if(std::abs(angle_diff) < 1.0)
