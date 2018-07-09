@@ -19,14 +19,19 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     gazebo_ros
-  LIBRARIES ${PROJECT_NAME}
+  LIBRARIES simple_world_plugin gazebo_poltergeist_gimbal_plugin
 )
 
-add_library(${PROJECT_NAME} src/simple_world_plugin.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_library(simple_world_plugin src/simple_world_plugin.cpp)
+target_link_libraries(simple_world_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_library(gazebo_poltergeist_gimbal_plugin src/gazebo_poltergeist_gimbal_plugin.cpp)
+target_link_libraries(gazebo_poltergeist_gimbal_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+
 
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
-install(DIRECTORY worlds
+install(DIRECTORY resources
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

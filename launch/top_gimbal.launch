@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<launch>
+  
+  <include file="$(find gazebo_poltergeist_gimbal)/launch/create_benchtest_world.launch"/>
+ <!-- send table urdf to param server -->
+  <param name="table_descriptiona" command="$(find xacro)/xacro --inorder $(find gazebo_poltergeist_gimbal)/resources/models/two_box.urdf.acro" />
+
+  <node name="spawn_table" pkg="gazebo_ros" type="spawn_model" args="-urdf -param table_descriptiona -z 3 -model table_ij_model" respawn="false" output="screen" />
+  
+</launch>
+
