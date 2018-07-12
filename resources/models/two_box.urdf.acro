@@ -57,6 +57,15 @@
     <limit effort="80" velocity="1.0" lower="-999999999" upper="999999999" />
     <safety_controller k_velocity="10" k_position="15" soft_lower_limit="-2.0" soft_upper_limit="0.5" />
  </joint>
+<joint name="my_joint" type="continuous">
+    <parent link="${namespace}/base_link"/>
+    <child link="firefly/gimbal_link"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0"/>
+    <dynamics friction="0"/>
+    <limit velocity="1e+16" effort="1e+16" />
+    <origin xyz="-0.05 0 0.2"/>
+  </joint>
 
    
 </robot>

@@ -11,8 +11,8 @@
 
 
 
-    <!-- reference to your plugin -->
-    <plugin name="hello" filename="libsimple_world_plugin.so"/>
+    <!-- reference to your plugin 
+    <plugin name="hello" filename="libsimple_world_plugin.so"/>-->
   </world>
 </sdf>
 

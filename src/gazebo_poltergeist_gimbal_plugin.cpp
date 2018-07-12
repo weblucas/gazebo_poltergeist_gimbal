@@ -13,15 +13,16 @@ namespace gazebo
 //// Default values
 static const std::string kDefaultParentFrameId = "gimbal_support";
 static const std::string kDefaultChildFrameId = "camera_mount";
-static const std::string kDefaulGimbaltLinkName = "gimbal_support_link";
-static const std::string kDefaultCameraLinkName = "camera_mount_link";
+static const std::string kDefaulGimbaltLinkName = "firefly/gimbal_support_link";
+static const std::string kDefaultCameraLinkName = "firefly/gimbal_yaw";
 static const  float kDEG_2_RAD = M_PI / 180.0;
 
 class GazeboPoltergeistGimbalPlugin : public ModelPlugin
 {
-public:
+public:    
     void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
     {
+        ROS_WARN("init Hello World! gazebo_poltergeist_gimbal model v10");
 
         // Initialize ros, if it has not already bee initialized.
         if (!ros::isInitialized())
@@ -31,20 +32,24 @@ public:
             ros::init(argc, argv, "gazebo_client8",
                       ros::init_options::NoSigintHandler);
         }
+
         // Create our ROS node. This acts in a similar manner to
         // the Gazebo node
         this->node_handle_.reset(new ros::NodeHandle("gazebo_client8"));
 
         rpy_sub_ = node_handle_->subscribe<geometry_msgs::Vector3Stamped>(
-                    "/command", 10, &GazeboPoltergeistGimbalPlugin::onRPYCallback ,this);
+                    "/command/gimbal_actuators", 10, &GazeboPoltergeistGimbalPlugin::onRPYCallback ,this);
 
         // Store the pointer to the model
         this->model_ = _parent;
 
-        gimbal_support_link_ = this->model_->GetChildLink(kDefaulGimbaltLinkName);
-        camera_mount_link_ = this->model_->GetChildLink(kDefaultCameraLinkName);
-        goal_point_.Set();
-        base_point_ = camera_mount_link_->GetRelativePose().rot.GetAsEuler().Ign();
+//        gimbal_support_link_ = this->model_->GetChildLink(kDefaulGimbaltLinkName);
+//        camera_mount_link_ = this->model_->GetChildLink(kDefaultCameraLinkName);
+        cam_joint_ = this->model_->GetJoint("my_joint");
+
+
+       goal_point_.Set();
+       base_point_ = ignition::math::Vector3d(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
 
 
 
@@ -56,7 +61,8 @@ public:
         // simulation iteration.
         this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this));
-        ROS_WARN("Hello World! gazebo_poltergeist_gimbal model v5");
+
+        ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v9");
     }
 
     void onRPYCallback(const geometry_msgs::Vector3Stamped::ConstPtr& msg) {
@@ -97,26 +103,26 @@ public:
 
         if(gimbal_status_ == STATIC)
         {
-            camera_mount_link_->SetAngularVel(ignition::math::Vector3d(0.0, 0, 0));
+            cam_joint_->SetVelocity(0,0.0);
         }else if(gimbal_status_ == MOVING)
         {
-            double curr_position = ConvertAngle180(camera_mount_link_->GetRelativePose().rot.GetAsEuler().x/kDEG_2_RAD);
+            double curr_position = ConvertAngle180(cam_joint_->GetAngle(0).Degree());//todo check function normalize from the angle class
 
             double angle_diff =  curr_position - goal_point_.X();
 
             if(std::abs(angle_diff) < 1.0)
             {
                 gimbal_status_ = STATIC;
-                camera_mount_link_->SetAngularVel(ignition::math::Vector3d(0.0, 0, 0));
+                cam_joint_->SetVelocity(0,0.0);
                 //todo correct the position to the ideal value
             }else
             {
                 if(angle_diff > 0)
-                    camera_mount_link_->SetAngularVel(ignition::math::Vector3d(0.3, 0, 0));
+                    cam_joint_->SetVelocity(0,-0.3);
                 else
-                    camera_mount_link_->SetAngularVel(ignition::math::Vector3d(-0.3, 0, 0));
+                    cam_joint_->SetVelocity(0,0.3);
             }
-            ROS_INFO_STREAM( camera_mount_link_->GetRelativePose() << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_point_.X()  ); //camera_mount_link_->GetRelativePose() <<
+            ROS_INFO_STREAM( cam_joint_->GetAngle(0) << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_point_.X()  ); //camera_mount_link_->GetRelativePose() <<
         }
     }
 
@@ -156,6 +162,8 @@ private:
 
     physics::LinkPtr gimbal_support_link_;
     physics::LinkPtr camera_mount_link_;
+
+    physics::JointPtr cam_joint_;
 
     ignition::math::Vector3d goal_point_;
     ignition::math::Vector3d base_point_;
