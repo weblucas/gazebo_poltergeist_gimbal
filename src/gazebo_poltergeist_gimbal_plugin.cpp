@@ -2,7 +2,6 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
-#include <ignition/math/Vector3.hh>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 #include <geometry_msgs/Vector3Stamped.h>
@@ -43,13 +42,11 @@ public:
         // Store the pointer to the model
         this->model_ = _parent;
 
-//        gimbal_support_link_ = this->model_->GetChildLink(kDefaulGimbaltLinkName);
-//        camera_mount_link_ = this->model_->GetChildLink(kDefaultCameraLinkName);
         cam_joint_ = this->model_->GetJoint("my_joint");
 
 
        goal_point_.Set();
-       base_point_ = ignition::math::Vector3d(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
+       base_point_ = gazebo::math::Vector3(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
 
 
 
@@ -88,7 +85,7 @@ public:
 
         if(input_valid)
         {
-            goal_point_= ignition::math::Vector3<double>(msg->vector.x,msg->vector.y,msg->vector.z);
+            goal_point_= gazebo::math::Vector3(msg->vector.x,msg->vector.y,msg->vector.z);
             gimbal_status_ = MOVING;
         }
 
@@ -108,7 +105,7 @@ public:
         {
             double curr_position = ConvertAngle180(cam_joint_->GetAngle(0).Degree());//todo check function normalize from the angle class
 
-            double angle_diff =  curr_position - goal_point_.X();
+            double angle_diff =  curr_position - goal_point_.x;
 
             if(std::abs(angle_diff) < 1.0)
             {
@@ -122,7 +119,7 @@ public:
                 else
                     cam_joint_->SetVelocity(0,0.3);
             }
-            ROS_INFO_STREAM( cam_joint_->GetAngle(0) << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_point_.X()  ); //camera_mount_link_->GetRelativePose() <<
+            ROS_INFO_STREAM( cam_joint_->GetAngle(0) << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_point_.x  ); //camera_mount_link_->GetRelativePose() <<
         }
     }
 
@@ -165,8 +162,8 @@ private:
 
     physics::JointPtr cam_joint_;
 
-    ignition::math::Vector3d goal_point_;
-    ignition::math::Vector3d base_point_;
+    gazebo::math::Vector3 goal_point_;
+    gazebo::math::Vector3 base_point_;
 
     // Pointer to the update event connection
     event::ConnectionPtr update_connection_;
