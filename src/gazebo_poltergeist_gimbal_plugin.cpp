@@ -128,8 +128,8 @@ public:
 #if GAZEBO_MAJOR_VERSION > 6
         cam_joint_->SetVelocity(0,vel);
 #else
-        cam_joint_->SetParam("fmax", 0, 100.0);
-        cam_joint_->SetParam("vel", 0, vel);
+        cam_joint_->SetAttribute("fmax", 0, 100.0);
+        cam_joint_->SetAttribute("vel", 0, vel);
 #endif
     }
 
