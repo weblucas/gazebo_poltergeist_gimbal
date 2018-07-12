@@ -100,7 +100,7 @@ public:
 
         if(gimbal_status_ == STATIC)
         {
-            cam_joint_->SetVelocity(0,0.0);
+            setSpeed(0.0);
         }else if(gimbal_status_ == MOVING)
         {
             double curr_position = ConvertAngle180(cam_joint_->GetAngle(0).Degree());//todo check function normalize from the angle class
@@ -110,17 +110,27 @@ public:
             if(std::abs(angle_diff) < 1.0)
             {
                 gimbal_status_ = STATIC;
-                cam_joint_->SetVelocity(0,0.0);
+                setSpeed(0.0);
                 //todo correct the position to the ideal value
             }else
             {
                 if(angle_diff > 0)
-                    cam_joint_->SetVelocity(0,-0.3);
+                    setSpeed(-0.3);
                 else
-                    cam_joint_->SetVelocity(0,0.3);
+                    setSpeed(0.3);
             }
             ROS_INFO_STREAM( cam_joint_->GetAngle(0) << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_point_.x  ); //camera_mount_link_->GetRelativePose() <<
         }
+    }
+
+    double setSpeed(double vel)
+    {
+#if GAZEBO_MAJOR_VERSION > 6
+        cam_joint_->SetVelocity(0,vel);
+#else
+        cam_joint_->SetParam("fmax", 0, 100.0);
+        cam_joint_->SetParam("vel", 0, vel);
+#endif
     }
 
     double ConvertAngle180(double angle) //[-180,180]
