@@ -20,9 +20,7 @@ class GazeboPoltergeistGimbalPlugin : public ModelPlugin
 {
 public:    
     void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/)
-    {
-        ROS_WARN("init Hello World! gazebo_poltergeist_gimbal model v10");
-
+    {        
         // Initialize ros, if it has not already bee initialized.
         if (!ros::isInitialized())
         {
@@ -47,11 +45,6 @@ public:
 
        goal_point_.Set();
        base_point_ = gazebo::math::Vector3(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
-
-
-
-        //        rpyPub = node_handle_->Advertise<gz_std_msgs::ConnectGazeboToRosTopic>(
-        //                  "~/" + kConnectGazeboToRosSubtopic, 1);
 
 
         // Listen to the update event. This event is broadcast every
@@ -125,7 +118,7 @@ public:
 
     double setSpeed(double vel)
     {
-#if GAZEBO_MAJOR_VERSION > 6
+#if GAZEBO_MAJOR_VERSION > 4
         cam_joint_->SetVelocity(0,vel);
 #else
         cam_joint_->SetAttribute("fmax", 0, 100.0);
