@@ -15,11 +15,11 @@ static const std::string kDefaultChildFrameId = "camera_mount";
 static const std::string kDefaulGimbaltLinkName = "firefly/gimbal_support_link";
 static const std::string kDefaultCameraLinkName = "firefly/gimbal_yaw";
 static const  uint kNumActuators = 3;
-static const  float kDEG_2_RAD = M_PI / 180.0;
+static const  double kDEG_2_RAD = M_PI / 180.0;
 
 class GazeboPoltergeistGimbalPlugin : public ModelPlugin
 {
-public:    
+public:
     GazeboPoltergeistGimbalPlugin():ModelPlugin(){
         //        <robotNamespace>${namespace}</robotNamespace>
         //
@@ -42,6 +42,11 @@ public:
         // the Gazebo node
         node_handle_.reset(new ros::NodeHandle("gazebo_gimbal_plugin"));
 
+        if (_sdf->HasElement("robot_namespace"))
+            namespace_ = _sdf->Get<std::string>("robot_namespace");
+        else
+            namespace_ = "/gimbal";
+
         // Store the pointer to the model
         model_ = _parent;
 
@@ -53,20 +58,43 @@ public:
 
         //rpy order roll pitch yaw
 
-        joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("roll_joint_name")));
-        base_points_.push_back(_sdf->Get<double>("roll_zero"));
-        directions_.push_back(_sdf->Get<double>("roll_direction"));
+        if (_sdf->HasElement("roll_joint_name")){
+            joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("roll_joint_name")));
+            base_points_.push_back(_sdf->Get<double>("roll_zero"));
+            directions_.push_back(_sdf->Get<double>("roll_direction"));
+        }
+        else
+        {
+            joints_.push_back(nullptr);
+            base_points_.push_back(-1e15);
+            directions_.push_back(-1e15);
+        }
 
-        joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("pitch_joint_name")));
-        base_points_.push_back(_sdf->Get<double>("pitch_zero"));
-        directions_.push_back(_sdf->Get<double>("pitch_direction"));
+        if (_sdf->HasElement("pitch_joint_name")){
+            joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("pitch_joint_name")));
+            base_points_.push_back(_sdf->Get<double>("pitch_zero"));
+            directions_.push_back(_sdf->Get<double>("pitch_direction"));
+        }
+        else
+        {
+            joints_.push_back(nullptr);
+            base_points_.push_back(-1e15);
+            directions_.push_back(-1e15);
+        }
 
-        joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("yaw_joint_name")));
-        base_points_.push_back(_sdf->Get<double>("yaw_zero"));
-        directions_.push_back(_sdf->Get<double>("yaw_direction"));
-
-        goal_points_.assign(joints_.size(),0);
-        actuator_status_.assign(joints_.size(),STATIC);
+        if (_sdf->HasElement("yaw_joint_name")){
+            joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("yaw_joint_name")));
+            base_points_.push_back(_sdf->Get<double>("yaw_zero"));
+            directions_.push_back(_sdf->Get<double>("yaw_direction"));
+        }
+        else
+        {
+            joints_.push_back(nullptr);
+            base_points_.push_back(-1e15);
+            directions_.push_back(-1e15);
+        }
+        goal_points_.assign(kNumActuators,0);
+        actuator_status_.assign(kNumActuators,STATIC);
 
         velocity_ = 0.3;
         if (_sdf->HasElement("gimbal_angular_velocity"))
@@ -74,20 +102,21 @@ public:
 
 
         input_sub_ = node_handle_->subscribe<sensor_msgs::Joy>(
-                    "/command/gimbal_actuators", 10, &GazeboPoltergeistGimbalPlugin::onInputCallback ,this);
+                    namespace_+"/command/gimbal_actuators", 10, &GazeboPoltergeistGimbalPlugin::onInputCallback ,this);
 
 
-        static bool first_time = true;
-        if(first_time)
+
+        for(int i=0;i<kNumActuators;i++)
         {
-            for(int i=0;i<kNumActuators;i++)
-            {
-                joints_[i]->SetPosition(0,base_points_[i]*kDEG_2_RAD);
-                actuator_status_[i] = STATIC;
+            if(joints_[i] != nullptr){
+             //   joints_[i]->SetPosition(0,base_points_[i]*kDEG_2_RAD);
             }
+            else
+                actuator_status_[i] = INDEFINED;
 
-            first_time = false;
         }
+
+
 
         ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v9: ");
 
@@ -97,10 +126,10 @@ public:
         //      base_point_ = gazebo::math::Vector3(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
 
 
-//         Listen to the update event. This event is broadcast every
-//         simulation iteration.
-            this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
-                        std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this));
+        //         Listen to the update event. This event is broadcast every
+        //         simulation iteration.
+        this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
+                    std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this));
 
         ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v9");
     }
@@ -108,24 +137,24 @@ public:
     void onInputCallback(const sensor_msgs::Joy::ConstPtr& msg) {
         if(msg->axes.size() != 3 )
         {
-            ROS_ERROR_STREAM( "Gimbal Request need to have 3 axes, Roll: Pitch: Yaw, even that they are not used");
+            ROS_ERROR_STREAM( "Gimbal Request need to have 3 axes, Roll: Pitch: Yaw, even that they are not avaiable");
 
         }
         ROS_INFO_STREAM( "Gimbal Request Roll:"<< msg->axes[0] << " Pitch:"<< msg->axes[1] << " Yaw:"<< msg->axes[2] << " ");
         bool input_valid = true;
-        if(msg->axes[0] > 180 || msg->axes[0] < -179)
+        if(joints_[0] != nullptr&&(msg->axes[0] > 180 || msg->axes[0] < -179))
         {
             ROS_WARN_STREAM("Gimbal Request ignored - invalid ROLL [-179,180]: " << msg->axes[0]);
             input_valid = false;
         }
 
-        if(msg->axes[1] > 180 || msg->axes[1] < -179)
+        if(joints_[1] != nullptr&&(msg->axes[1] > 180 || msg->axes[1] < -179))
         {
             ROS_WARN_STREAM("Gimbal Request ignored - invalid PITCH [-179,180]: " << msg->axes[1]);
             input_valid = false;
         }
 
-        if(msg->axes[2] > 180 || msg->axes[2] < -179)
+        if(joints_[2] != nullptr&&(msg->axes[2] > 180 || msg->axes[2] < -179))
         {
             ROS_WARN_STREAM("Gimbal Request ignored - invalid YAW [-179,180]: " << msg->axes[2]);
             input_valid = false;
@@ -135,6 +164,8 @@ public:
         {
             for(int i=0;i<kNumActuators;i++)
             {
+                if(joints_[i] == nullptr)
+                    continue;
                 goal_points_[i] = msg->axes[i];
                 actuator_status_[i] = MOVING;
             }
@@ -149,6 +180,9 @@ public:
 
 
         for(int i=0;i<kNumActuators;i++){
+            if(joints_[i] == nullptr)
+                continue;
+
             if(actuator_status_[i] == STATIC)
             {
 
@@ -158,7 +192,7 @@ public:
             else if(actuator_status_[i] == MOVING)
             {
 
-                double curr_position = GetJointPositionOffSeted(i); //todo check function normalize from the angle class
+                double curr_position = GetJointPositionOffSeted(i);
 
                 double angle_diff =  curr_position - goal_points_[i];
 
@@ -174,8 +208,10 @@ public:
                     else
                         setSpeed(i,velocity_);
                 }
-                ROS_INFO_STREAM("axis: "<< i <<" curr " << joints_[i]->GetAngle(0).Degree() << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
+                double raw_angle = joints_[i]->GetAngle(0).Degree();
+                ROS_INFO_STREAM("axis: "<< i <<" curr " << raw_angle << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
 
+                test_math();
             }
         }
     }
@@ -183,21 +219,31 @@ public:
     double setSpeed(size_t joint_index,double vel)
     {
 #if GAZEBO_MAJOR_VERSION > 4
-        joints_[joint_index]->SetVelocity(0,vel);
+//        if(joints_[joint_index] != nullptr)
+//            joints_[joint_index]->SetVelocity(0,vel);
+        if(joints_[joint_index] != nullptr){
+            joints_[joint_index]->SetParam("fmax", 0, 100.0);
+            joints_[joint_index]->SetParam("vel", 0, vel);
+        }
 #else
-        joints_[joint_index]->SetAttribute("fmax", 0, 100.0);
-        joints_[joint_index]->SetAttribute("vel", 0, vel);
+        if(joints_[joint_index] != nullptr){
+            joints_[joint_index]->SetAttribute("fmax", 0, 100.0);
+            joints_[joint_index]->SetAttribute("vel", 0, vel);
+        }
 #endif
     }
 
     double GetJointPosition(size_t joint_index)
     {
-        return ConvertAngle180(std::fmod(joints_[joint_index]->GetAngle(0).Degree()+72000000,360.0));
+        if(joints_[joint_index] != nullptr)
+            return ConvertAngle180(std::fmod(joints_[joint_index]->GetAngle(0).Degree()+72000000.0,360.0));
+
+        return -1e16;
     }
 
     double GetJointPositionOffSeted(size_t joint_index)
     {
-        return ConvertAngle180(std::fmod(GetJointPosition(joint_index) -  base_points_[joint_index]+360,360.0));
+        return ConvertAngle180(std::fmod(GetJointPosition(joint_index) -  base_points_[joint_index]+360.0,360.0));
     }
 
     double ConvertAngle180(double angle) //[-180,180]
@@ -208,6 +254,17 @@ public:
     double ConvertAngle360(double angle)//[0,360]
     {
         return std::fmod(angle+360.0,360.0);// 0 -> 0 , 10 -> 10, -10 -> 350
+    }
+
+    double test_math()
+    {
+        double joint_index = 1;
+        ROS_INFO_STREAM(" 1: "<< joints_[joint_index]->GetAngle(0).Degree() <<\
+                        " 2: "<< std::fmod(joints_[joint_index]->GetAngle(0).Degree()+72000000.0,360.0) <<\
+                        " 3: "<< GetJointPosition(1) <<\
+                        " 4: "<< GetJointPosition(joint_index) -  base_points_[joint_index]+360.0 <<\
+                        " 5: "<< std::fmod(GetJointPosition(joint_index) -  base_points_[joint_index]+360.0,360.0) <<\
+                        " 6: "<< GetJointPositionOffSeted(1) );
     }
 
 
@@ -235,10 +292,13 @@ private:
     enum ActuatorStatus
     {
         STATIC,
-        MOVING
+        MOVING,
+        INDEFINED
     };
 
     double velocity_;
+
+    std::string namespace_;
 
 
     ///GAZEBO
@@ -275,10 +335,6 @@ private:
     ros::Publisher status_pub_;
     ros::Publisher transform_gimbal_camera_pub_;
     ros::Publisher gimbal_camera_tf_pub_;
-
-
-
-
 
 };
 
