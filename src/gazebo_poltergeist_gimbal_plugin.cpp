@@ -209,9 +209,9 @@ public:
                         setSpeed(i,velocity_);
                 }
                 double raw_angle = joints_[i]->GetAngle(0).Degree();
-                ROS_INFO_STREAM("axis: "<< i <<" curr " << raw_angle << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
+               // ROS_INFO_STREAM("axis: "<< i <<" curr " << raw_angle << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
 
-                test_math();
+                //test_math();
             }
         }
     }
