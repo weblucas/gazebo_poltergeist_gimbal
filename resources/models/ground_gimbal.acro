@@ -1,202 +1,209 @@
 <?xml version="1.0" ?>
-<robot name="simple_box" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="poltergeist_gimbal" xmlns:xacro="http://www.ros.org/wiki/xacro">
+	<xacro:macro name="gimbal_base_joint" params="link_name joint_name child_link visible rpy parent_link *origin">
+		<joint name="gimbal_fix" type="fixed">
+			<parent link="${parent_link}"/>
+			<child link="${link_name}"/>
+			<axis xyz="1 0 0"/>
+			<dynamics damping="0"/>
+			<dynamics friction="0"/>
+			<limit velocity="1e+16" effort="1e+16" />
+			<xacro:insert_block name="origin" />
+		</joint>
+		<xacro:if value="${visible}">
+			<link name='${link_name}'>
+				<visual>
+					<origin xyz="0 0 0"/>
+					<geometry>
+						<box size="0.01 0.04 0.04" />
+					</geometry>
+				</visual>
+				<inertial>
+					<mass value="0.0001" />
+					<inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+					<origin xyz="0 0 0" />
+				</inertial>
+			</link>
+		</xacro:if>
+		<joint name="${joint_name}" type="continuous">
+			<parent link="${link_name}"/>
+			<child link="${child_link}"/>
+			<axis xyz="1 0 0"/>
+			<dynamics damping="0"/>
+			<dynamics friction="0"/>
+			<limit velocity="1e+16" effort="1e+16" />
+			<origin xyz="0 0 0" rpy="${rpy}"/>
+		</joint>
+	</xacro:macro>
+	<xacro:macro name="gimbal_l_arm_joint" params="link_name joint_name child_link offset_x offset_y visible joint_type ">
+		<xacro:if value="${visible}">
+			<link name='${link_name}'>
+				<visual>
+					<origin xyz="0 ${offset_y/2} 0"/>
+					<geometry>
+						<box size="0.01 ${offset_y} 0.01" />
+					</geometry>
+				</visual>
+				<visual>
+					<origin xyz="${offset_x/2} ${offset_y} 0"/>
+					<geometry>
+						<box size="${offset_x} 0.01 0.01" />
+					</geometry>
+				</visual>
+				<inertial>
+					<mass value="0.0001" />
+					<inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+					<origin xyz="0 0 0" />
+				</inertial>
+			</link>
+		</xacro:if>
+		<joint name="${joint_name}" type="${joint_type}">
+			<parent link="${link_name}"/>
+			<child link="${child_link}"/>
+			<axis xyz="1 0 0"/>
+			<dynamics damping="0"/>
+			<dynamics friction="0"/>
+			<limit velocity="1e+16" effort="1e+16" />
+			<origin xyz="${offset_x} ${offset_y} 0" rpy="0 0 -1.57"/>    
+		</joint>
+	</xacro:macro>
 
 
+	<xacro:macro name="bottom_gimbal" params="namespace parent_link *origin yaw_x yaw_y roll_x roll_y pitch_x pitch_y visible">
 
-<xacro:macro name="gimbal_base_joint" params="link_name joint_name child_link visible rpy">
-<xacro:if value="${visible}">
-  <link name='${link_name}'>
-     <visual>
-        <origin xyz="0 0 0"/>
-        <geometry>
-          <box size="0.01 0.04 0.04" />
-        </geometry>
-     </visual>
-     <inertial>
-        <mass value="0.0001" />
-        <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
-        <origin xyz="0 0 0" />
-     </inertial>
-  </link>
- </xacro:if>
-  <joint name="${joint_name}" type="continuous">
-    <parent link="${link_name}"/>
-    <child link="${child_link}"/>
-    <axis xyz="1 0 0"/>
-    <dynamics damping="0"/>
-    <dynamics friction="0"/>
-    <limit velocity="1e+16" effort="1e+16" />
-    <origin xyz="0 0 0" rpy="${rpy}"/>
-  </joint>
-</xacro:macro>
+		<gimbal_base_joint  joint_name="yaw_joint" link_name="gimbal_base_link" child_link="yaw_arm_link" visible="${visible}" rpy="0 1.57 3.14" parent_link="${parent_link}">
+			<xacro:insert_block name="origin" /> 
+		</gimbal_base_joint>
+		<gimbal_l_arm_joint joint_name="roll_joint" link_name="yaw_arm_link" offset_x="0.3" offset_y="0.2" child_link="roll_arm_link" visible="${visible}" joint_type="continuous"/>
+		<gimbal_l_arm_joint joint_name="pitch_joint" link_name="roll_arm_link" offset_x="0.3" offset_y="0.2" child_link="pitch_arm_link" visible="${visible}" joint_type="continuous"/>
+		<gimbal_l_arm_joint joint_name="camera_mount_joint" link_name="pitch_arm_link" offset_x="0.3" offset_y="0.2" child_link="camera_mount_link" visible="${visible}" joint_type="fixed"/>
+		<link name='camera_mount_link'>
+			<visual >
+				<origin xyz="0 0 0"/>
+				<geometry>
+					<box size="0.05 0.01 0.01" />
+				</geometry>
+			</visual>
+			<inertial>
+				<mass value="0.001" />
+				<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
+				<origin xyz="0 0 0" />
+			</inertial>
+		</link>
+		<gazebo >
+			<plugin name="gimbal_controller" filename="libgazebo_poltergeist_gimbal_plugin.so">
+				<robotNamespace>${namespace}</robotNamespace>
+				<roll_joint_name>roll_joint</roll_joint_name>
+				<roll_direction>1</roll_direction>
+				<roll_zero>90</roll_zero>
+				<pitch_joint_name>pitch_joint</pitch_joint_name>
+				<pitch_direction>1</pitch_direction>
+				<pitch_zero>-90</pitch_zero>
+				<yaw_joint_name>yaw_joint</yaw_joint_name>
+				<yaw_direction>1</yaw_direction>
+				<yaw_zero>0</yaw_zero>
+				<gimbal_angular_velocity>0.3</gimbal_angular_velocity>
+				<ref_base_link>${parent_link}</ref_base_link>
+				<camera_link>camera_mount_link</camera_link>
+			</plugin>
+		</gazebo>
+	</xacro:macro>
+        <xacro:macro name="bottom_1D_gimbal" params="namespace parent_link *origin yaw_x yaw_y roll_x roll_y pitch_x pitch_y visible">
 
-<xacro:macro name="gimbal_l_arm_joint" params="link_name joint_name child_link offset_x offset_y visible joint_type ">
- <xacro:if value="${visible}">
-  <link name='${link_name}'>
-     <visual>
-        <origin xyz="0 ${offset_y/2} 0"/>
-        <geometry>
-          <box size="0.01 ${offset_y} 0.01" />
-        </geometry>
-     </visual>
-     <visual>
-        <origin xyz="${offset_x/2} ${offset_y} 0"/>
-        <geometry>
-          <box size="${offset_x} 0.01 0.01" />
-        </geometry>
-     </visual>
-     <inertial>
-        <mass value="0.0001" />
-        <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
-        <origin xyz="0 0 0" />
-     </inertial>
-  </link>
- </xacro:if>
-  <joint name="${joint_name}" type="${joint_type}">
-    <parent link="${link_name}"/>
-    <child link="${child_link}"/>
-    <axis xyz="1 0 0"/>
-    <dynamics damping="0"/>
-    <dynamics friction="0"/>
-    <limit velocity="1e+16" effort="1e+16" />
-    <origin xyz="${offset_x} ${offset_y} 0" rpy="0 0 -1.57"/>    
-  </joint>
-</xacro:macro>
+		<gimbal_base_joint  joint_name="yaw_joint" link_name="gimbal_base_link" child_link="yaw_arm_link" visible="${visible}" rpy="0 1.57 3.14" parent_link="${parent_link}">
+			<xacro:insert_block name="origin" /> 
+		</gimbal_base_joint>
+		<gimbal_l_arm_joint joint_name="roll_joint" link_name="yaw_arm_link" offset_x="0.3" offset_y="0.2" child_link="roll_arm_link" visible="${visible}" joint_type="continuous"/>
+		<gimbal_l_arm_joint joint_name="pitch_joint" link_name="roll_arm_link" offset_x="0.3" offset_y="0.2" child_link="pitch_arm_link" visible="${visible}" joint_type="continuous"/>
+		<gimbal_l_arm_joint joint_name="camera_mount_joint" link_name="pitch_arm_link" offset_x="0.3" offset_y="0.2" child_link="camera_mount_link" visible="${visible}" joint_type="fixed"/>
+		<link name='camera_mount_link'>
+			<visual >
+				<origin xyz="0 0 0"/>
+				<geometry>
+					<box size="0.05 0.01 0.01" />
+				</geometry>
+			</visual>
+			<inertial>
+				<mass value="0.001" />
+				<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
+				<origin xyz="0 0 0" />
+			</inertial>
+		</link>
+		<gazebo >
+			<plugin name="gimbal_controller" filename="libgazebo_poltergeist_gimbal_plugin.so">
+				<robotNamespace>${namespace}</robotNamespace>
+				<roll_joint_name>roll_joint</roll_joint_name>
+				<roll_direction>1</roll_direction>
+				<roll_zero>90</roll_zero>
+				<pitch_joint_name>pitch_joint</pitch_joint_name>
+				<pitch_direction>1</pitch_direction>
+				<pitch_zero>-90</pitch_zero>
+				<yaw_joint_name>yaw_joint</yaw_joint_name>
+				<yaw_direction>1</yaw_direction>
+				<yaw_zero>0</yaw_zero>
+				<gimbal_angular_velocity>0.3</gimbal_angular_velocity>
+				<ref_base_link>${parent_link}</ref_base_link>
+				<camera_link>camera_mount_link</camera_link>
+			</plugin>
+		</gazebo>
+	</xacro:macro>
 
+	<link name='g_base_link'>
+		<origin xyz="0 0 0"/>
+		<inertial>
+			<mass value="1000.0" />
+			<inertia  ixx="100.0" ixy="0.0"  ixz="0.0"  iyy="100.0"  iyz="0.0"  izz="100.0" />
+			<origin xyz="0 0 0" />
+		</inertial>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<visual >
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<box size="4 4 0.05" />
+			</geometry>
+		</visual>
+		<collision >
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<box size="4 4 0.05" />
+			</geometry>
+		</collision>
+	</link>
 
-<xacro:macro name="bottom_gimbal" params="namespace yaw_x yaw_y roll_x roll_y pitch_x pitch_y visible">
-   <link name='camera_mount_link'>
-      <visual >
-        <origin xyz="0 0 0"/>
-        <geometry>
-        <box size="0.05 0.01 0.01" />
-       </geometry>
-      </visual>
-      <inertial>
-        <mass value="0.001" />
-        <inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
-        <origin xyz="0 0 0" />
-      </inertial>
-   </link>
-        <gimbal_base_joint  joint_name="yaw_joint" link_name="gimbal_base_link" child_link="yaw_arm_link" visible="true" rpy="0 1.57 0"/>
-	<gimbal_l_arm_joint joint_name="roll_joint" link_name="yaw_arm_link" offset_x="0.3" offset_y="0.2" child_link="roll_arm_link" visible="true" joint_type="continuous"/>
-	<gimbal_l_arm_joint joint_name="pitch_joint" link_name="roll_arm_link" offset_x="0.3" offset_y="0.2" child_link="pitch_arm_link" visible="true" joint_type="continuous"/>
-	<gimbal_l_arm_joint joint_name="camera_mount_joint" link_name="pitch_arm_link" offset_x="0.3" offset_y="0.2" child_link="camera_mount_link" visible="true" joint_type="fixed"/>
-  <gazebo >
-      <plugin name="gimbal_controller" filename="libgazebo_poltergeist_gimbal_plugin.so">
-		<robotNamespace>${namespace}</robotNamespace>
-		<yaw_joint_name>yaw_joint</yaw_joint_name>
-		<yaw_direction>1</yaw_direction>
-		<yaw_zero>180</yaw_zero>
-		<roll_joint_name>roll_joint</roll_joint_name>
-		<roll_direction>1</roll_direction>
-		<roll_zero>90</roll_zero>
-		<pitch_joint_name>pitch_joint</pitch_joint_name>
-		<pitch_direction>1</pitch_direction>
-		<pitch_zero>-90</pitch_zero>
-		<gimbal_angular_velocity>0.3</gimbal_angular_velocity>
-	</plugin>
-  </gazebo>
-</xacro:macro>
-   
-  <gazebo >
-<plugin name="gimbal_controller" filename="libgazebo_poltergeist_gimbal_plugin.so"/>
-  </gazebo>
- 
-    <link name='g_base_link'>
-      <origin xyz="0 0 0"/>
-      <inertial>
-        <mass value="1000.0" />
-      <inertia  ixx="100.0" ixy="0.0"  ixz="0.0"  iyy="100.0"  iyz="0.0"  izz="100.0" />
-        <origin xyz="0 0 0" />
-      </inertial>
-      <self_collide>0</self_collide>
-      <kinematic>0</kinematic>
-      <visual >
-        <origin xyz="0 0 0"/>
-        <geometry>
-        <box size="4 4 0.05" />
-       </geometry>
-      </visual>
-      <collision >
-        <origin xyz="0 0 0"/>
-        <geometry>
-        <box size="4 4 0.05" />
-       </geometry>
-      </collision>
-    </link>
+	<joint name="g_base_link__up_stick_link" type="fixed">
+		<parent link="g_base_link"/>
+		<child link="up_stick_link"/>
+		<axis xyz="1 0 0"/>
+		<dynamics damping="0"/>
+		<dynamics friction="0"/>
+		<limit velocity="1e+16" effort="1e+16" />
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+	</joint>
 
-   <joint name="g_base_link__up_stick_link" type="fixed">
-    <parent link="g_base_link"/>
-    <child link="up_stick_link"/>
-    <axis xyz="1 0 0"/>
-    <dynamics damping="0"/>
-    <dynamics friction="0"/>
-    <limit velocity="1e+16" effort="1e+16" />
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
-    <link name='up_stick_link'>
-      <origin xyz="0 0 0"/>
-      <inertial>
-        <mass value="0.001" />
-      <inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
-        <origin xyz="0 0 0" />
-      </inertial>
-      <self_collide>0</self_collide>
-      <kinematic>0</kinematic>
-      <visual >
-        <origin xyz="0 0 0.5"/>
-        <geometry>
-        <box size="0.05 0.05 1" />
-       </geometry>
-      </visual>
-      <visual >
-        <origin xyz="0.25 0 1"/>
-        <geometry>
-        <box size="0.5 0.05 0.05" />
-       </geometry>
-      </visual>
-      <visual >
-        <origin xyz="0.5 0 0.9"/>
-        <geometry>
-        <box size="0.05 0.05 0.2" />
-       </geometry>
-      </visual>
-    </link>
-  <joint name="my_joint" type="continuous">
-    <parent link="up_stick_link"/>
-    <child link="gimbal_base_link"/>
-    <axis xyz="1 0 0"/>
-    <dynamics damping="0"/>
-    <dynamics friction="0"/>
-    <limit velocity="1e+16" effort="1e+16" />
-    <origin xyz="0.5 0 0.8" rpy="0 0 -1.57"/>
-  </joint>
-
-<!--
-<link name='camera_mount_link1'>
-<visual >
-        <origin xyz="0 0.05 0"/>
-        <geometry>
-        <box size="0.05 0.1 0.05" />
-       </geometry>
-      </visual>
-<inertial>
-        <mass value="0.001" />
-      <inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
-        <origin xyz="0 0 0" />
-      </inertial>
-</link>
-
-
-
-l_arm joint_name="test1" link_name="tes1link" offset_x="0.3" offset_y="0.2" child_link="tes2link" visible="true"/>
-<l_arm joint_name="test2" link_name="tes2link" offset_x="0.3" offset_y="0.2" child_link="tes3link" visible="true"/>
-<l_arm joint_name="test3" link_name="tes3link" offset_x="0.3" offset_y="0.2" child_link="camera_mount_link" visible="true"/-->
-<bottom_gimbal namespace="firefly" yaw_x="0.3" yaw_y="0.2" roll_x="0.3" roll_y="0.2" pitch_x="0.3" pitch_y="0.2" visible="true"/>
-
-
-
-   
+	<link name='up_stick_link'>
+		<origin xyz="0 0 0"/>
+		<inertial>
+			<mass value="0.001" />
+			<inertia  ixx="1.0" ixy="0.0"  ixz="0.0"  iyy="1.0"  iyz="0.0"  izz="1.0" />
+			<origin xyz="0 0 0" />
+		</inertial>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<visual >
+			<origin xyz="0 0 0.5"/>
+			<geometry>
+				<box size="0.05 0.05 1" />
+			</geometry>
+		</visual>
+		<visual>
+			<origin xyz="0.25 0 1"/>
+			<geometry>
+				<box size="0.5 0.05 0.05" />
+			</geometry>
+		</visual>		
+	</link>
+	<bottom_gimbal namespace="firefly" yaw_x="0.3" yaw_y="0.2" roll_x="0.3" roll_y="0.2" pitch_x="0.3" pitch_y="0.2" visible="true" parent_link="up_stick_link">
+           <origin xyz="0.5 0 0.8" rpy="0 0 -1.57"/>
+	</bottom_gimbal>
 </robot>
