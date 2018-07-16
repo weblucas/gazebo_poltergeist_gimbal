@@ -15,17 +15,14 @@ static const std::string kDefaultChildFrameId = "camera_mount";
 static const std::string kDefaulGimbaltLinkName = "firefly/gimbal_support_link";
 static const std::string kDefaultCameraLinkName = "firefly/gimbal_yaw";
 static const  uint kNumActuators = 3;
+static const  double kDefaultVelocity = 0.3;
 static const  double kDEG_2_RAD = M_PI / 180.0;
 
 class GazeboPoltergeistGimbalPlugin : public ModelPlugin
 {
 public:
     GazeboPoltergeistGimbalPlugin():ModelPlugin(){
-        //        <robotNamespace>${namespace}</robotNamespace>
-        //
-        //                    <gimbal_angular_velocity>0.3</gimbal_angular_velocity>
-        //                    <ref_base_link>${parent_link}</ref_base_link>
-        //                    <camera_link>camera_mount_link</camera_link>
+
     }
     void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     {
@@ -55,9 +52,11 @@ public:
 
         std::string cam_link_str = _sdf->Get<std::string>("camera_link");
         camera_mount_link_ = model_->GetChildLink(cam_link_str);
+        //TODO(lpt) add the transform publisher
 
         //rpy order roll pitch yaw
 
+        //TODO(lpt) add more error handling for th parameters
         if (_sdf->HasElement("roll_joint_name")){
             joints_.push_back(model_->GetJoint(_sdf->Get<std::string>("roll_joint_name")));
             base_points_.push_back(_sdf->Get<double>("roll_zero"));
@@ -96,7 +95,7 @@ public:
         goal_points_.assign(kNumActuators,0);
         actuator_status_.assign(kNumActuators,STATIC);
 
-        velocity_ = 0.3;
+        velocity_ = kDefaultVelocity;
         if (_sdf->HasElement("gimbal_angular_velocity"))
             velocity_ = _sdf->Get<double>("gimbal_angular_velocity");
 
@@ -109,29 +108,22 @@ public:
         for(int i=0;i<kNumActuators;i++)
         {
             if(joints_[i] != nullptr){
-             //   joints_[i]->SetPosition(0,base_points_[i]*kDEG_2_RAD);
+                joints_[i]->SetPosition(0,base_points_[i]*kDEG_2_RAD);
             }
             else
                 actuator_status_[i] = INDEFINED;
 
         }
 
-
-
-        ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v9: ");
-
-        //       cam_joint_ = this->model_->GetJoint("my_joint");
-
-
-        //      base_point_ = gazebo::math::Vector3(cam_joint_->GetAngle(0).Degree(),cam_joint_->GetAngle(1).Degree(),cam_joint_->GetAngle(2).Degree());
+        previousUpdate_ = 0.0;
 
 
         //         Listen to the update event. This event is broadcast every
         //         simulation iteration.
         this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
-                    std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this));
+                    std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this, std::placeholders::_1));
 
-        ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v9");
+        ROS_WARN("end Hello World! gazebo_poltergeist_gimbal model v14");
     }
 
     void onInputCallback(const sensor_msgs::Joy::ConstPtr& msg) {
@@ -173,45 +165,64 @@ public:
     }
 
     // Called by the world update start event
-    void OnUpdate()
+    void OnUpdate(const common::UpdateInfo & _info)
     {
-        // Apply a small linear velocity to the model.
-        //this->model->SetLinearVel(ignition::math::Vector3d(.3, 0, 0));
-
 
         for(int i=0;i<kNumActuators;i++){
             if(joints_[i] == nullptr)
                 continue;
 
+            double curr_position = GetJointPositionOffSeted(i);
+
+            double angle_diff =  curr_position - goal_points_[i];
+
+
+
             if(actuator_status_[i] == STATIC)
             {
+                common::Time delta_time = _info.simTime - previousUpdate_;
 
-                setSpeed(i,0.0);
 
+                if(delta_time > 0)
+                {
+                    double update_vel = std::min(std::abs(kDEG_2_RAD*angle_diff/delta_time.Double()),velocity_);
+                    if(angle_diff > 0)
+                    {
+                        setSpeed(i,-update_vel);
+                    }
+                    else
+                    {
+                        setSpeed(i,update_vel);
+                    }
+                }
+
+                
+                //joints_[i]->SetPosition(0,0.0); Attention: never use setposition function or fmax = 0
+                //joints_[i]->SetParam("fmax", 0, 0.0);
             }
-            else if(actuator_status_[i] == MOVING)
+            else if(actuator_status_[i] == MOVING)//TODO remove(moving state, is not necessary anymore
             {
-
-                double curr_position = GetJointPositionOffSeted(i);
-
-                double angle_diff =  curr_position - goal_points_[i];
 
                 if(std::abs(angle_diff) < 1.0)
                 {
                     actuator_status_[i] = STATIC;
-                    setSpeed(i,0.0);
-                    //todo correct the position to the ideal value
+                    //setSpeed(i,0.0);
                 }else
                 {
                     if(angle_diff > 0)
+                    {
                         setSpeed(i,-velocity_);
+                    }
                     else
+                    {
                         setSpeed(i,velocity_);
+                    }
                 }
-                double raw_angle = joints_[i]->GetAngle(0).Degree();
-               // ROS_INFO_STREAM("axis: "<< i <<" curr " << raw_angle << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
+                //double raw_angle = joints_[i]->GetAngle(0).Degree();
+                // ROS_INFO_STREAM("axis: "<< i <<" curr " << raw_angle << " diff:" << angle_diff << " curr:" << curr_position << " goal:" << goal_points_[i]  ); //camera_mount_link_->GetRelativePose() <<
 
                 //test_math();
+                previousUpdate_ = _info.simTime;
             }
         }
     }
@@ -219,11 +230,11 @@ public:
     double setSpeed(size_t joint_index,double vel)
     {
 #if GAZEBO_MAJOR_VERSION > 4
-//        if(joints_[joint_index] != nullptr)
-//            joints_[joint_index]->SetVelocity(0,vel);
+        //        if(joints_[joint_index] != nullptr)
+        //            joints_[joint_index]->SetVelocity(0,vel);
         if(joints_[joint_index] != nullptr){
             joints_[joint_index]->SetParam("fmax", 0, 100.0);
-            joints_[joint_index]->SetParam("vel", 0, vel);
+            joints_[joint_index]->SetParam("vel", 0, vel);//joint motor - only supported by ODE
         }
 #else
         if(joints_[joint_index] != nullptr){
@@ -299,6 +310,8 @@ private:
     double velocity_;
 
     std::string namespace_;
+
+    common::Time previousUpdate_;
 
 
     ///GAZEBO
