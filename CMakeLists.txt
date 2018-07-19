@@ -3,13 +3,11 @@ project(gazebo_poltergeist_gimbal)
 
 add_definitions(-std=c++11)
 
-# Load catkin and all dependencies required for this package
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   gazebo_ros
 )
 
-# Depend on system install of Gazebo
 find_package(gazebo REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
@@ -26,8 +24,6 @@ catkin_package(
 
 add_library(gazebo_poltergeist_gimbal_plugin src/gazebo_poltergeist_gimbal_plugin.cpp)
 target_link_libraries(gazebo_poltergeist_gimbal_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
-
-
 
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

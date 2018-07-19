@@ -113,7 +113,6 @@
     </xacro:macro>
 
     <xacro:macro name="bottom_1D_gimbal" params="namespace parent_link *origin visible">
-
         <gimbal_base_joint  joint_name="${namespace}/pitch_joint" link_name="${namespace}/gimbal_base_link" child_link="${namespace}/camera_mount_link" visible="${visible}" rpy="0 0 ${pi/2}" parent_link="${parent_link}">
             <xacro:insert_block name="origin" /> 
         </gimbal_base_joint>

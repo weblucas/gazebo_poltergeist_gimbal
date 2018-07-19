@@ -56,8 +56,9 @@
 			</geometry>
 		</visual>		
 	</link>
-        <xacro:include filename="$(find visensor_simulator)/resources/gimbal_snippets.xacro" />
 
+
+        <xacro:include filename="$(find gazebo_poltergeist_gimbal)/resources/models/gimbal_snippets.xacro" />
 <!--
   <xacro:bottom_1D_gimbal namespace="${namespace}"  visible="false" parent_link="${namespace}/base_link">
            <origin xyz="$(arg vi_sensor_position_xyz)" rpy="$(arg vi_sensor_orientation_rpy)"/>

@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <launch>
   
-  <include file="$(find gazebo_poltergeist_gimbal)/launch/create_benchtest_world.launch"/>
-  <param name="robot_description" command="$(find xacro)/xacro  --inorder $(find gazebo_poltergeist_gimbal)/resources/models/ground_gimbal.acro" />
-  <node name="spawn_table" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -z 0.1 -model robot_description" respawn="false" output="screen" />
+  <include file="$(find gazebo_poltergeist_gimbal)/launch/testbench_world.launch"/>
+  <param name="gimbal_description" command="$(find xacro)/xacro  --inorder $(find gazebo_poltergeist_gimbal)/resources/models/ground_gimbal.acro" />
+  <node name="spawn_gimbal" pkg="gazebo_ros" type="spawn_model" args="-urdf -param gimbal_description -z 0.1 -model gimbal_with_base" respawn="false" output="screen" />
 
 <!-- Combine joint values 
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher"/>-->
 
   <!-- Show in Rviz   
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find mrm_description)/launch/config.rviz" />-->
+  <node name="rviz" pkg="rviz" type="rviz" />-->
 
   <!-- send joint values 
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">

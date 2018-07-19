@@ -120,7 +120,7 @@ public:
         this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
                     std::bind(&GazeboPoltergeistGimbalPlugin::OnUpdate, this, std::placeholders::_1));
 
-        ROS_WARN("Hello World! gazebo_poltergeist_gimbal model v17");
+        ROS_WARN("Gazebo_poltergeist_gimbal model v0.17");
     }
 
     void onInputCallback(const sensor_msgs::Joy::ConstPtr& msg) {
