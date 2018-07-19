@@ -21,11 +21,8 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     gazebo_ros
-  LIBRARIES simple_world_plugin gazebo_poltergeist_gimbal_plugin
+  LIBRARIES gazebo_poltergeist_gimbal_plugin
 )
-
-add_library(simple_world_plugin src/simple_world_plugin.cpp)
-target_link_libraries(simple_world_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_library(gazebo_poltergeist_gimbal_plugin src/gazebo_poltergeist_gimbal_plugin.cpp)
 target_link_libraries(gazebo_poltergeist_gimbal_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

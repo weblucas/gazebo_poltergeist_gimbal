@@ -2,11 +2,6 @@
 <launch>
   
   <include file="$(find gazebo_poltergeist_gimbal)/launch/create_benchtest_world.launch"/>
- <!-- send table urdf to param server 
-  <param name="table_descriptiona" command="$(find xacro)/xacro -inorder $(find gazebo_poltergeist_gimbal)/resources/models/ground_gimbal.acro" />>
-<param name="table_descriptiona" command="$(find xacro)/xacro -inorder /home/lucas/catkin_ws/src/visensor_simulator/resources/mav_with_odom_and_vi_sensor_and_gimbal_no_cameras.gazebo" /-->
-<!--<param name="table_descriptiona" command="cat /home/lucas/catkin_ws/src/visensor_simulator/resources/drone.urdf"/>-->
-
   <param name="robot_description" command="$(find xacro)/xacro  --inorder $(find gazebo_poltergeist_gimbal)/resources/models/ground_gimbal.acro" />
   <node name="spawn_table" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -z 0.1 -model robot_description" respawn="false" output="screen" />
 
