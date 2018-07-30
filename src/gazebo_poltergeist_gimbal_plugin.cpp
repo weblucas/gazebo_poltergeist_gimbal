@@ -2,6 +2,7 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <tf/transform_broadcaster.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 #include <sensor_msgs/Joy.h>
@@ -196,10 +197,28 @@ public:
             //joints_[i]->SetPosition(0,0.0); Attention: never use setposition function or fmax = 0
             //joints_[i]->SetParam("fmax", 0, 0.0);
 
+            // broadcast camera to base transform
+            math::Pose camera_link_pose = camera_mount_link_->GetRelativePose();
+            tf::StampedTransform tf_base_camera;
+            gazeboPoseToStampedTransform(camera_link_pose, &tf_base_camera);
+            br_.sendTransform(tf_base_camera);
 
             previousUpdate_ = _info.simTime;
 
         }
+    }
+
+    void gazeboPoseToStampedTransform(const math::Pose& pose, tf::StampedTransform* stamped_transform)
+    {
+      ros::Time stamp = ros::Time::now();
+      tf::Quaternion tf_q(pose.rot.x, pose.rot.y ,pose.rot.z, pose.rot.w);
+      tf::Vector3 tf_p(pose.pos.x, pose.pos.y, pose.pos.z);
+      tf::Transform tf_full(tf_q, tf_p);
+
+      stamped_transform->setData(tf_full);
+      stamped_transform->frame_id_ = gimbal_support_link_->GetName();
+      stamped_transform->child_frame_id_ = camera_mount_link_->GetName();
+      stamped_transform->stamp_ = stamp;
     }
 
     double setSpeed(size_t joint_index,double vel)
@@ -297,6 +316,7 @@ private:
     ros::Publisher status_pub_;//TODO
     ros::Publisher transform_gimbal_camera_pub_; //TODO
     ros::Publisher gimbal_camera_tf_pub_;//TODO
+    tf::TransformBroadcaster br_;
 
 };
 
